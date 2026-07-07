@@ -1,5 +1,3 @@
-# app.py
-
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 
@@ -7,200 +5,137 @@ from public_client import PublicClient
 from orb_engine import ORBEngine
 
 
-# --- Configure Public client and engine ---
+# --- Configure your Public client & ORB engine ---
 
-PUBLIC_BASE_URL = "https://api.public.com"  # adjust to actual base URL
-PUBLIC_API_KEY = "YOUR_PUBLIC_API_KEY"      # inject via env in real use
+PUBLIC_BASE_URL = "https://api.public.com"
+PUBLIC_API_KEY = "YOUR_PUBLIC_API_KEY"  # TODO: put your real key or read from env
 
-universe = ["SPY", "QQQ", "AAPL", "MSFT"]   # initial trading universe
+universe = ["SPY", "QQQ", "AAPL", "MSFT"]
 
 public_client = PublicClient(
     base_url=PUBLIC_BASE_URL,
-    api_key=PUBLIC_API_KEY,
+    api_key=I54u3RPUYoWGcso4NW51Nl8bqAAkC7pa,
 )
 
 engine = ORBEngine(
     public_client=public_client,
     universe=universe,
     orb_minutes=30,
-    routing_mode="paper",
+    routing_mode="paper",  # change to 'live' when you’re ready
 )
 
-
-# --- FastAPI app ---
+# --- Create the FastAPI app ---
 
 app = FastAPI()
 
 
+# --- ORB engine endpoints ---
+
 @app.get("/engine/state")
 def engine_state():
     """
-    JSON endpoint for the dashboard: ORB engine state.
+    Returns the current state of the ORB engine,
+    including any generated signals.
     """
     return engine.to_dict()
 
 
+# --- Simple HTML dashboard (ORB Desk) ---
+
 DASHBOARD_HTML = """
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <title>Tzu ORB Desk</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    body {
-      margin: 0;
-      background: #05080c;
-      color: #e8eef2;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont,
-                   "SF Pro Text", "Helvetica Neue", sans-serif;
-    }
-    .wrap { min-height: 100vh; display: flex; flex-direction: column; }
-    header {
-      padding: 16px 24px 12px;
-      border-bottom: 1px solid #233040;
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
-    }
-    h1 { margin: 2px 0 6px; font-size: 22px; }
-    .muted { color: #99a4ac; font-size: 13px; }
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 4px 10px;
-      border-radius: 999px;
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      background: #163138;
-      color: #63a9b1;
-    }
-    main {
-      padding: 16px 24px 20px;
-      display: grid;
-      grid-template-columns: 2fr 1.2fr 1.3fr;
-      gap: 14px;
-    }
-    .card {
-      background: #10151f;
-      border-radius: 10px;
-      border: 1px solid #233040;
-      padding: 12px 14px 14px;
-    }
-    .card h2 { margin: 0 0 4px; font-size: 16px; }
-    .card small {
-      display: block;
-      margin-bottom: 6px;
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: #66707b;
-    }
-    .list { font-size: 12px; }
-    .list div {
-      display: flex;
-      justify-content: space-between;
-      padding: 3px 0;
-      border-bottom: 1px solid #161f29;
-    }
-    .list div:last-child { border-bottom: none; }
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      padding: 2px 7px;
-      border-radius: 999px;
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      background: #261d12;
-      color: #deb35a;
-    }
-    .badge.bull { background: #13281b; color: #76bf8a; }
-    .badge.bear { background: #2a1717; color: #d47171; }
-    code {
-      font-size: 10px;
-      white-space: pre;
-      line-height: 1.4;
-      display: block;
-      max-height: 260px;
-      overflow: auto;
-    }
-  </style>
-</head>
-<body>
-  <div class="wrap">
-    <header>
-      <div>
-        <span class="pill">tzu orb · public api</span>
-        <h1>Opening range desk</h1>
-        <p class="muted">Live ORB signals and routing state from the engine.</p>
-      </div>
-      <div>
-        <div class="muted">Routing mode</div>
-        <div id="routing_mode" style="font-size:18px; font-weight:600;">paper</div>
-      </div>
-    </header>
-    <main>
-      <section class="card">
-        <small>Scanner</small>
-        <h2>Signals</h2>
-        <div class="list" id="signals_list"></div>
-      </section>
-      <section class="card">
-        <small>Summary</small>
-        <h2>Engine state</h2>
-        <p class="muted">
-          Proposals · <span id="proposals_val">0</span><br/>
-          Staged orders · <span id="staged_val">0</span>
-        </p>
-      </section>
-      <section class="card">
-        <small>Debug</small>
-        <h2>Raw JSON</h2>
-        <code id="json_dump">{}</code>
-      </section>
-    </main>
-  </div>
-  <script>
-    async function fetchState() {
-      const r = await fetch('/engine/state');
-      return await r.json();
-    }
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>ORB Desk</title>
+    <style>
+      body { font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif; margin: 2rem; background: #050816; color: #e5e7eb; }
+      h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+      p  { color: #9ca3af; }
+      table { border-collapse: collapse; width: 100%; margin-top: 1.5rem; }
+      th, td { border-bottom: 1px solid #1f2937; padding: 0.5rem 0.75rem; text-align: left; }
+      th { background: #111827; color: #e5e7eb; font-weight: 500; }
+      tr:nth-child(even) { background: #030712; }
+      .pill { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 999px; font-size: 0.75rem; }
+      .pill-long { background: #064e3b; color: #bbf7d0; }
+      .pill-short { background: #7f1d1d; color: #fecaca; }
+      .pill-neutral { background: #374151; color: #e5e7eb; }
+    </style>
+  </head>
+  <body>
+    <h1>ORB Desk</h1>
+    <p>Live view of ORB signals powered by your Public client.</p>
 
-    function render(data) {
-      document.getElementById('routing_mode').textContent =
-        data.routing_mode || 'paper';
-      document.getElementById('proposals_val').textContent =
-        data.proposals ?? 0;
-      document.getElementById('staged_val').textContent =
-        data.staged_orders ?? 0;
+    <table>
+      <thead>
+        <tr>
+          <th>Symbol</th>
+          <th>Side</th>
+          <th>Entry</th>
+          <th>Stop</th>
+          <th>Time</th>
+        </tr>
+      </thead>
+      <tbody id="signals-body">
+        <tr>
+          <td colspan="5">Loading signals…</td>
+        </tr>
+      </tbody>
+    </table>
 
-      const signalsEl = document.getElementById('signals_list');
-      signalsEl.innerHTML = '';
-      (data.signals || []).forEach((s) => {
-        const row = document.createElement('div');
-        const dir = (s.direction || '').toLowerCase();
-        const dirClass = dir === 'bull' ? 'bull' : dir === 'bear' ? 'bear' : '';
-        row.innerHTML =
-          '<span>' + s.symbol + '</span>' +
-          '<span><span class="badge ' + dirClass + '">' +
-          (s.direction || '') +
-          '</span> · ' + (s.score || 0).toFixed(1) +
-          '</span>';
-        signalsEl.appendChild(row);
-      });
+    <script>
+      async function refreshSignals() {
+        try {
+          const res = await fetch("/engine/state");
+          const data = await res.json();
 
-      document.getElementById('json_dump').textContent =
-        JSON.stringify(data, null, 2);
-    }
+          const tbody = document.getElementById("signals-body");
+          tbody.innerHTML = "";
 
-    fetchState().then(render);
-    // Optional: live updates
-    // setInterval(() => fetchState().then(render), 5000);
-  </script>
-</body>
+          const signals = data.signals || [];
+
+          if (!signals.length) {
+            const tr = document.createElement("tr");
+            const td = document.createElement("td");
+            td.colSpan = 5;
+            td.textContent = "No signals yet.";
+            tr.appendChild(td);
+            tbody.appendChild(tr);
+            return;
+          }
+
+          for (const s of signals) {
+            const tr = document.createElement("tr");
+
+            const sideClass =
+              s.side === "LONG" ? "pill pill-long"
+              : s.side === "SHORT" ? "pill pill-short"
+              : "pill pill-neutral";
+
+            tr.innerHTML = `
+              <td>${s.symbol || ""}</td>
+              <td><span class="${sideClass}">${s.side || ""}</span></td>
+              <td>${s.entry_price ?? ""}</td>
+              <td>${s.stop_price ?? ""}</td>
+              <td>${s.timestamp || ""}</td>
+            `;
+            tbody.appendChild(tr);
+          }
+        } catch (err) {
+          const tbody = document.getElementById("signals-body");
+          tbody.innerHTML = "";
+          const tr = document.createElement("tr");
+          const td = document.createElement("td");
+          td.colSpan = 5;
+          td.textContent = "Error loading engine state.";
+          tr.appendChild(td);
+          tbody.appendChild(tr);
+        }
+      }
+
+      refreshSignals();
+      setInterval(refreshSignals, 5000);
+    </script>
+  </body>
 </html>
 """
 
