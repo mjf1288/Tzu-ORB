@@ -1,9 +1,10 @@
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
 
-from public_client import PublicClient
-from orb_engine import ORBEngine
+app = FastAPI()
 
+@app.get("/")
+def root():
+    return {"message": "ORB desk is alive"}
 
 # --- Configure your Public client & ORB engine ---
 
